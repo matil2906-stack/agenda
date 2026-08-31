@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agenda</title>
+<meta name="theme-color" content="#162326" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<style>
+:root {
+  --bg: #EEF3F1;
+  --ink: #162326;
+  --ink-soft: #56656A;
+  --card: #FBFCFB;
+  --line: #DAE3E0;
+  --today: #C1502E;
+  --today-bg: #FBE9E2;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  padding-bottom: 3rem;
+}
+h1, h2 { margin: 0; }
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.25rem 1rem;
+  max-width: 640px;
+  margin: 0 auto;
+  gap: 0.75rem;
+}
+.topbar h1 { font-size: 1.6rem; font-weight: 700; }
+.topbar-btns { display: flex; gap: 0.5rem; }
+.btn-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+main#week {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.day { display: flex; flex-direction: column; gap: 0.6rem; }
+.day-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  text-transform: capitalize;
+}
+.day.is-today .day-label { color: var(--today); }
+.lesson-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.day.is-today .lesson-card { background: var(--today-bg); border-color: #EFC3B0; }
+.lesson-card.is-done { opacity: 0.5; }
+.lesson-check {
+  width: 1.2rem; height: 1.2rem; margin-top: 0.15rem; flex-shrink: 0; cursor: pointer; accent-color: var(--ink);
+}
+.subject-dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; margin-top: 0.4rem; flex-shrink: 0; }
+.lesson-body { flex: 1; min-width: 0; }
+.subject-name { font-weight: 700; font-size: 0.95rem; }
+.lesson-card.is-done .subject-name, .lesson-card.is-done .lesson-text { text-decoration: line-through; }
+.lesson-text { color: var(--ink-soft); font-size: 0.9rem; margin-top: 0.15rem; white-space: pre-wrap; word-break: break-word; }
+.btn-del { border: none; background: none; color: var(--ink-soft); font-size: 1.1rem; cursor: pointer; }
+.empty { max-width: 640px; margin: 3rem auto 0; text-align: center; color: var(--ink-soft); padding: 0 1.25rem; }
+.hidden { display: none !important; }
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(22, 35, 38, 0.45);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 10;
+}
+.sheet {
+  background: var(--card);
+  width: 100%; max-width: 480px;
+  border-radius: 20px 20px 0 0;
+  padding: 1.25rem 1.25rem 1.75rem;
+  display: flex; flex-direction: column; gap: 0.9rem;
+}
+@media (min-width: 560px) {
+  .overlay { align-items: center; }
+  .sheet { border-radius: 20px; }
+}
+.sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.btn-close { border: none; background: none; font-size: 1.4rem; color: var(--ink-soft); cursor: pointer; }
+label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; font-weight: 600; color: var(--ink-soft); }
+input, textarea {
+  font-family: Arial, sans-serif; font-size: 1rem; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.7rem; background: #fff;
+}
+textarea { resize: vertical; }
+.btn-save {
+  margin-top: 0.4rem; border: none; background: var(--ink); color: var(--bg);
+  font-weight: 700; font-size: 1rem; padding: 0.8rem; border-radius: 12px; cursor: pointer;
+}
+.saved-msg {
+  text-align: center; font-size: 0.8rem; color: var(--ink-soft); max-width: 640px; margin: 0 auto; padding: 0 1.25rem;
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Agenda</h1>
+  <div class="topbar-btns">
+    <button id="btnDownload" class="btn-icon" title="Télécharger une sauvegarde" aria-label="Télécharger">&#8681;</button>
+    <button id="openAdd" class="btn-icon" aria-label="Ajouter une leçon">+</button>
+  </div>
+</header>
+
+<p class="saved-msg">Tes leçons sont enregistrées automatiquement sur cet appareil.</p>
+
+<main id="week"></main>
+
+<div id="empty" class="empty hidden">
+  <p>Rien de prévu cette semaine.</p>
+  <p>Appuie sur + pour ajouter une leçon.</p>
+</div>
+
+<div id="overlay" class="overlay hidden">
+  <form id="lessonForm" class="sheet">
+    <div class="sheet-head">
+      <h2>Nouvelle leçon</h2>
+      <button type="button" id="closeAdd" class="btn-close" aria-label="Fermer">&times;</button>
+    </div>
+    <label>Date
+      <input type="date" id="fieldDate" required />
+    </label>
+    <label>Matière
+      <select id="fieldSubjectSelect" required></select>
+    </label>
+    <label id="newSubjectRow" class="hidden">Nom de la nouvelle matière
+      <input type="text" id="fieldNewSubject" placeholder="ex : Maths" autocomplete="off" />
+    </label>
+    <label>Leçon
+      <textarea id="fieldText" rows="4" placeholder="ex : Théorème de Pythagore, exercices 12 à 15 p.34" required></textarea>
+    </label>
+    <button type="submit" class="btn-save">Enregistrer</button>
+  </form>
+</div>
+
+<input type="file" id="fileImport" accept="application/json" class="hidden" />
+
+<script>
+const STORAGE_KEY = "agenda-lessons";
+const SUBJECTS_KEY = "agenda-subjects";
+const weekEl = document.getElementById("week");
+const emptyEl = document.getElementById("empty");
+const overlay = document.getElementById("overlay");
+const form = document.getElementById("lessonForm");
+const subjectSelect = document.getElementById("fieldSubjectSelect");
+const newSubjectRow = document.getElementById("newSubjectRow");
+const newSubjectInput = document.getElementById("fieldNewSubject");
+
+const SUBJECT_COLORS = ["#5B7B7A", "#A9633D", "#6C5B7B", "#3E6259", "#8C4646", "#4A6FA5", "#8A6D3B", "#3F6E8C"];
+
+function colorFor(subject) {
+  let hash = 0;
+  for (const ch of subject.toLowerCase()) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return SUBJECT_COLORS[hash % SUBJECT_COLORS.length];
+}
+
+function toISODate(d) {
+  const off = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - off * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function nextSevenDays() {
+  const days = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+function loadLessons() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLessons(lessons) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(lessons));
+}
+
+function loadSubjects() {
+  try {
+    return JSON.parse(localStorage.getItem(SUBJECTS_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSubjects(subjects) {
+  localStorage.setItem(SUBJECTS_KEY, JSON.stringify(subjects));
+}
+
+function fillSubjectSelect() {
+  const subjects = loadSubjects();
+  subjectSelect.innerHTML = "";
+  for (const s of subjects) {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    subjectSelect.appendChild(opt);
+  }
+  const addOpt = document.createElement("option");
+  addOpt.value = "__new__";
+  addOpt.textContent = "+ Nouvelle matière";
+  subjectSelect.appendChild(addOpt);
+}
+
+subjectSelect.addEventListener("change", () => {
+  const isNew = subjectSelect.value === "__new__";
+  newSubjectRow.classList.toggle("hidden", !isNew);
+  if (isNew) newSubjectInput.focus();
+});
+
+function render() {
+  const lessons = loadLessons();
+  weekEl.innerHTML = "";
+  const days = nextSevenDays();
+  const todayISO = toISODate(days[0]);
+  let anyLesson = false;
+
+  for (const day of days) {
+    const iso = toISODate(day);
+    const dayLessons = lessons
+      .filter((l) => l.date === iso)
+      .sort((a, b) => (a.done === b.done ? a.subject.localeCompare(b.subject) : a.done ? 1 : -1));
+    if (dayLessons.length === 0) continue;
+    anyLesson = true;
+
+    const dayEl = document.createElement("div");
+    dayEl.className = "day" + (iso === todayISO ? " is-today" : "");
+
+    const label = document.createElement("div");
+    label.className = "day-label";
+    const labelText = day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    label.textContent = iso === todayISO ? `Aujourd'hui — ${labelText}` : labelText;
+    dayEl.appendChild(label);
+
+    for (const lesson of dayLessons) {
+      const card = document.createElement("div");
+      card.className = "lesson-card" + (lesson.done ? " is-done" : "");
+
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "lesson-check";
+      check.checked = !!lesson.done;
+      check.setAttribute("aria-label", "Leçon faite");
+      check.addEventListener("change", () => {
+        const updated = loadLessons().map((l) => (l.id === lesson.id ? { ...l, done: check.checked } : l));
+        saveLessons(updated);
+        render();
+      });
+
+      const dot = document.createElement("div");
+      dot.className = "subject-dot";
+      dot.style.background = colorFor(lesson.subject);
+
+      const body = document.createElement("div");
+      body.className = "lesson-body";
+      const subjectName = document.createElement("div");
+      subjectName.className = "subject-name";
+      subjectName.textContent = lesson.subject;
+      const text = document.createElement("div");
+      text.className = "lesson-text";
+      text.textContent = lesson.text;
+      body.appendChild(subjectName);
+      body.appendChild(text);
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn-del";
+      delBtn.textContent = "\u00d7";
+      delBtn.setAttribute("aria-label", "Supprimer");
+      delBtn.addEventListener("click", () => {
+        const updated = loadLessons().filter((l) => l.id !== lesson.id);
+        saveLessons(updated);
+        render();
+      });
+
+      card.appendChild(check);
+      card.appendChild(dot);
+      card.appendChild(body);
+      card.appendChild(delBtn);
+      dayEl.appendChild(card);
+    }
+
+    weekEl.appendChild(dayEl);
+  }
+
+  emptyEl.classList.toggle("hidden", anyLesson);
+}
+
+document.getElementById("openAdd").addEventListener("click", () => {
+  document.getElementById("fieldDate").value = toISODate(new Date());
+  fillSubjectSelect();
+  const noSubjectsYet = loadSubjects().length === 0;
+  newSubjectRow.classList.toggle("hidden", !noSubjectsYet);
+  newSubjectInput.value = "";
+  overlay.classList.remove("hidden");
+});
+
+document.getElementById("closeAdd").addEventListener("click", () => {
+  overlay.classList.add("hidden");
+});
+
+overlay.addEventListener("click", (e) => {
+  if (e.target === overlay) overlay.classList.add("hidden");
+});
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  let subject = subjectSelect.value;
+  if (subject === "__new__") {
+    subject = newSubjectInput.value.trim();
+    if (!subject) return;
+    const subjects = loadSubjects();
+    if (!subjects.includes(subject)) {
+      subjects.push(subject);
+      saveSubjects(subjects);
+    }
+  }
+
+  const lessons = loadLessons();
+  lessons.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    date: document.getElementById("fieldDate").value,
+    subject,
+    text: document.getElementById("fieldText").value.trim(),
+    done: false,
+  });
+  saveLessons(lessons);
+  form.reset();
+  overlay.classList.add("hidden");
+  render();
+});
+
+document.getElementById("btnDownload").addEventListener("click", () => {
+  const data = JSON.stringify(loadLessons(), null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "agenda-sauvegarde.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+render();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+</body>
+</html>
